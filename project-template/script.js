@@ -1,112 +1,192 @@
 import Data from "./config.js";
 const searchBar = document.querySelector('#searchBar');
 const container = document.querySelector(".container");
-const cityNameContainer = document.querySelector('.city-name');
 
-const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-console.log("hello world")
-// Event will start on a keyup action
-searchBar.addEventListener('keyup', (event) => {
+const defineDay=(iteration)=>{
+    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const date = new Date();
+    let dayOfTheWeek = weekdays[(date.getDay() + iteration) % 7];
+    return dayOfTheWeek
+}
+
+const removeChildren=(parent)=>{
+    while(parent.firstChild){
+        parent.removeChild(parent.firstChild)
+    }
+}
+
+const GetDataGeoLoc=(cityName)=>{
+    let apiUrl="https://api.openweathermap.org/geo/1.0/direct?q=" + cityName + "&limit=1&appid=" + Data.key
+    return fetch(apiUrl)
+    .then(response => response.json())
+    .then(data => {
+        return data
+
+    })
+    .catch((error) => {
+
+        console.log('Error:', error);
+        removeChildren(container)
+    })
+}
+
+const GetDataWeather=(lat,lon)=>{
+    let apiUrl="https://api.openweathermap.org/data/2.5/forecast/?lat=" + lat + "&lon=" + lon + "&cnt=40&units=metric&exclude=minutely,hourly,alerts&appid=" + Data.key
+    return fetch(apiUrl)
+    .then(response => response.json())
+    .then(data => {
+     return data   
+ })
+    .catch((error) => {
+
+        console.log('Error:', error);
+        removeChildren(container)
+    })
+}
+
+const CreateHtmlElement =({id,type,data,parentID,classList,innertext,iteration})=>{
+ const randomName = document.createElement(type);
+ randomName.id=id
+ if (classList!=""){
+    randomName.classList.add(classList)
+}
+if (innertext!=""||data!=""){
+    randomName.innerHTML = data + innertext;
+}
+if (type=="img"){
+    randomName.src = "http://openweathermap.org/img/wn/" + data + "@2x.png";
+}
+document.getElementById(parentID).appendChild(randomName);
+}
+
+const fillingWithData=(dataWeather)=>{
+
+                        // Looping through 5 days of weather data
+    for(let i = 0; i < 5; i++) {
+        console.log(i)
+        let dayOfTheWeek = defineDay(i)
+        const data = dataWeather.list[i];
+                            // Create the elements with Data
+            // (name, type, data, parent, classList, innerText)
+        CreateHtmlElement({
+            id:"card"+i,
+            type:"div",
+            data:"",
+            parentID:"container",
+            classList:"card",
+            innertext:"",
+            iteration: i})
+        CreateHtmlElement({
+            id:"imageBox"+i,
+            type:"div",
+            data:"",
+            parentID:"card"+i,
+            classList:"imgBx",
+            innertext:"",
+            iteration: i})
+        CreateHtmlElement({
+            id:"cardImg"+i,
+            type:"img",
+            data:data.weather[0].icon,
+            parentID:"imageBox"+i,
+            classList:"",
+            innertext:"",
+            iteration: i})
+        CreateHtmlElement({
+            id:"contentBox"+i,
+            type:"div",
+            data:"",
+            parentID:"card"+i,
+            classList:"contentBx",
+            innertext:"",
+            iteration: i})
+        CreateHtmlElement({
+            id:"cardHeader"+i,
+            type:"h2",
+            data:dayOfTheWeek,
+            parentID:"contentBox"+i,
+            classList:"",
+            innertext:"",
+            iteration: i})
+        CreateHtmlElement({
+            id:"tempDescription"+i,
+            type:"h4",
+            data:data.weather[0].description,
+            parentID:"contentBox"+i,
+            classList:"",
+            innertext:"",
+            iteration: i})
+        CreateHtmlElement({
+            id:"currentTempBox"+i,
+            type:"div",
+            data:"",
+            parentID:"contentBox"+i,
+            classList:"color",
+            innertext:"",
+            iteration: i})
+        CreateHtmlElement({
+            id:"currentTempHeader"+i,
+            type:"h3",
+            data:"",
+            parentID:"currentTempBox"+i,
+            classList:"",
+            innertext:"Temp :",
+            iteration: i})
+        CreateHtmlElement({
+            id:"currentTemp"+i,
+            type:"span",
+            data:data.main.temp,
+            parentID:"currentTempBox"+i,
+            classList:"current-temp",
+            innertext:"°C",
+            iteration: i})
+        CreateHtmlElement({
+            id:"minMaxTemperatures"+i,
+            type:"div",
+            data:"",
+            parentID:"contentBox"+i,
+            classList:"details",
+            innertext:"",
+            iteration: i})
+        CreateHtmlElement({
+            id:"minMaxTempHeader"+i,
+            type:"h3",
+            data:"",
+            parentID:"minMaxTemperatures"+i,
+            classList:"",
+            innertext:"More :",
+            iteration: i})
+        CreateHtmlElement({
+            id:"minTemp"+i,
+            type:"span",
+            data:data.main.temp_min,
+            parentID:"minMaxTemperatures"+i,
+            classList:"min-temp",
+            innertext:"°C",
+            iteration: i})
+        CreateHtmlElement({
+            id:"maxTemp"+i,
+            type:"span",
+            data:data.main.temp_max,
+            parentID:"minMaxTemperatures"+i,
+            classList:"max-temp",
+            innertext:"°C",
+            iteration: i})
+    };
+}
+
+searchBar.addEventListener('keyup', async (event) => {
     // checking the action for specific key (Enter)
     if(event.key === "Enter") {
         // Store target in variable
-        const thisCity = event.target.value.toLowerCase();
-        const apiUrl = "https://api.openweathermap.org/data/2.5/forecast/?q=" + thisCity + "&appid=" + Data.key;
+        const thisCity =  event.target.value.toLowerCase();
         event.currentTarget.value = '';
-        // Fetching first api to get the City coordinates
-        fetch(apiUrl)
-            .then(response => response.json())
-            .then(data => {
-                const lon = data.city.coord.lon;
-                const lat = data.city.coord.lat;
 
-                cityNameContainer.innerHTML = data.city.name;
+        let coords = await GetDataGeoLoc(thisCity)
+        let dataWeather = await GetDataWeather(coords[0].lat,coords[0].lon)
+        
+        fillingWithData(dataWeather)
 
-                // Fetching final data according to the coordinates
-                fetch("https://api.openweathermap.org/data/2.5/onecall?lat=" + lat + "&lon=" + lon + "&cnt=5&units=metric&exclude=minutely,hourly,alerts&appid=" + Data.key)
-                    .then(response => response.json())
-                    .then(result => {
-                        console.log('Welcome to this basic weather app. this is not a product but the product of an academic exercise.')
-                        console.log("https://api.openweathermap.org/data/2.5/onecall?lat=" + lat + "&lon=" + lon + "&cnt=5&units=metric&exclude=minutely,hourly,alerts&appid=" + Data.key)
-                        console.log(result)
-                        // Removing all child elements from Container before creating new set of elements
-                        while (container.firstChild) {
-                            container.removeChild(container.firstChild);
-                        };
+    }
+})
 
-                        // Looping through 5 days of weather data
-                        for(let i = 0; i < 5; i++) {
-
-                            // Use the remainder operator (%) to switch from saturday (last in array) back to sunday (first in array)
-                            const date = new Date();
-                            let dayOfTheWeek = weekdays[(date.getDay() + i) % 7];
-                            const data = result.daily[i];
-
-                            // Create the elements with Data
-                            const card = document.createElement('div');
-                            card.classList.add("card");
-                            container.appendChild(card);
-
-                            const imageBox = document.createElement('div');
-                            imageBox.classList.add("imgBx");
-                            card.appendChild(imageBox);
-
-                            const cardImg = document.createElement('img');
-                            cardImg.src = "http://openweathermap.org/img/wn/" + data.weather[0].icon + "@2x.png";
-                            imageBox.appendChild(cardImg);
-
-                            const contentBox = document.createElement("div");
-                            contentBox.classList.add("contentBx");
-                            card.appendChild(contentBox);
-
-                            const cardHeader = document.createElement("h2");
-                            cardHeader.innerHTML = dayOfTheWeek;
-                            contentBox.appendChild(cardHeader);
-
-                            const tempDescription = document.createElement("h4");
-                            tempDescription.innerHTML = data.weather[0].description;
-                            contentBox.appendChild(tempDescription);
-
-                            const currentTempBox = document.createElement("div");
-                            currentTempBox.classList.add("color");
-                            contentBox.appendChild(currentTempBox);
-
-                            const currentTempHeader = document.createElement("h3");
-                            currentTempHeader.innerHTML = "Temp:"
-                            currentTempBox.appendChild(currentTempHeader);
-
-                            const currentTemp = document.createElement("span");
-                            currentTemp.classList.add("current-temp");
-                            currentTemp.innerHTML = data.temp.day + "°C";
-                            currentTempBox.appendChild(currentTemp);
-
-                            const minMaxTemperatures = document.createElement("div");
-                            minMaxTemperatures.classList.add("details");
-                            contentBox.appendChild(minMaxTemperatures);
-
-                            const minMaxTempHeader = document.createElement("h3");
-                            minMaxTempHeader.innerHTML = "More:"
-                            minMaxTemperatures.appendChild(minMaxTempHeader);
-
-                            const minTemp = document.createElement("span");
-                            minTemp.classList.add("min-temp")
-                            minTemp.innerHTML = data.temp.min + "°C";
-                            minMaxTemperatures.appendChild(minTemp);
-
-                            const maxTemp = document.createElement("span");
-                            maxTemp.classList.add("max-temp")
-                            maxTemp.innerHTML = data.temp.max + "°C";
-                            minMaxTemperatures.appendChild(maxTemp);
-                        };
-                    });
-            })
-            .catch((error) => {
-                // If there are errors, send out an error message
-                console.error('Error:', "not a place!");
-                while (container.firstChild) {
-                    container.removeChild(container.firstChild);
-                };
-                return alert("Are you sure you aren't holding your map upside down?");
-            });
-    };
-});
