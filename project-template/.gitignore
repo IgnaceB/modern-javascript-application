@@ -1,3 +1,2 @@
-config.js // To hide any confidential keys
-.idea // Depending on your IDE
-.vscode // Depending on your IDE
+config.js 
+
